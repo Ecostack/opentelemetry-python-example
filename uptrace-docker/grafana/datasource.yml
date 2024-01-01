@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: Uptrace Tempo Project 1
+    type: tempo
+    access: proxy
+    url: http://host.docker.internal:14318/api/tempo
+    editable: true
+    jsonData:
+      httpHeaderName1: 'uptrace-dsn'
+    secureJsonData:
+      httpHeaderValue1: 'http://1c82c2b2-671b-4a48-813d-d08f70e6db18@localhost:14317/1'
