@@ -36,7 +36,7 @@ services:
       - '5432:5432'
 
   uptrace:
-    image: 'uptrace/uptrace:1.6.0-rc.3'
+    image: 'uptrace/uptrace:1.6.0'
     #image: 'uptrace/uptrace-dev:latest'
     restart: on-failure
     volumes:
@@ -61,6 +61,8 @@ services:
     restart: on-failure
     expose:
       - '8025:8025'
+    ports:
+      - '8025:8025'
 
   vector:
     image: timberio/vector:0.28.X-alpine
@@ -77,6 +79,12 @@ services:
       - '3000:3000'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    restart: always
 
 volumes:
   ch_data9:

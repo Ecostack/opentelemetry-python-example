@@ -5,12 +5,13 @@
 
 export OTEL_SERVICE_NAME=opentelemetry-example
 
-export OTEL_TRACES_EXPORTER=console,otlp
+export OTEL_TRACES_EXPORTER=otlp
 export OTEL_LOGS_EXPORTER=otlp
 export OTEL_METRICS_EXPORTER=otlp
 
 export OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
 export OTEL_PYTHON_LOG_CORRELATION=true
+export OTEL_PYTHON_LOG_LEVEL=info
 
 # Enable gzip compression.
 export OTEL_EXPORTER_OTLP_COMPRESSION=gzip
@@ -24,5 +25,4 @@ export OTEL_EXPORTER_OTLP_HEADERS="uptrace-dsn=http://SomeRandomToken@localhost:
 export OTEL_EXPORTER_OTLP_ENDPOINT=127.0.0.1:14317
 export OTEL_EXPORTER_OTLP_INSECURE=true
 
-opentelemetry-instrument python3 main.py
-#opentelemetry-instrument flask --app main.py run
+opentelemetry-instrument uvicorn main:app
