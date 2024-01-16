@@ -9,6 +9,19 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import (
+    ConsoleMetricExporter,
+    PeriodicExportingMetricReader,
+)
+
+metric_reader = PeriodicExportingMetricReader(ConsoleMetricExporter())
+provider = MeterProvider(metric_readers=[metric_reader])
+
+# Sets the global default meter provider
+metrics.set_meter_provider(provider)
+
 # Create FastAPI app
 app = FastAPI()
 
@@ -32,26 +45,48 @@ redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 logger.info("hello from startup")
 
-@app.get('/weather')
-async def get_weather(latitude: float = Query(..., description="Latitude of the location"),
-                      longitude: float = Query(..., description="Longitude of the location")):
+# Creates a meter from the global meter provider
+meter = metrics.get_meter("my.meter.name")
+
+exceptions_raised_counter = meter.create_counter(
+    "exceptions.raised", unit="1", description="Counts the amount of exceptions raised"
+)
+
+
+def maybe_raise_random_error():
     # This creates a new span that's the child of the current one
-    with tracer.start_as_current_span("get_weather") as roll_span:
+    with tracer.start_as_current_span("maybe_raise_random_error") as span:
         if random.random() < 0.5:
+            exceptions_raised_counter.add(1, {"exception.type": HTTPException})
             logger.error('Random error occurred')
             # Return an error response 50% of the time
             raise HTTPException(status_code=500, detail='Random error occurred')
 
-        redisKey = 'weather_data_' + str(latitude) + '_' + str(longitude)
 
+def get_redis_key(latitude, longitude):
+    return 'weather_data_' + str(latitude) + '_' + str(longitude)
+
+
+def get_data_from_redis(latitude, longitude):
+    with tracer.start_as_current_span("get_data_from_redis") as span:
         logger.info('Checking Redis for weather data')
-
+        redisKey = get_redis_key(latitude, longitude)
         redisData = redis_client.get(redisKey)
         if redisData is not None:
             logger.info('Found weather data in Redis')
             return redisData
 
-        logger.info('Fetching weather data from Open-Meteo 2')
+
+def store_data_in_redis(latitude, longitude, data):
+    with tracer.start_as_current_span("store_data_in_redis") as span:
+        logger.info('Storing weather data in Redis')
+        redisKey = get_redis_key(latitude, longitude)
+        redis_client.set(redisKey, str(data), ex=4)
+
+
+def fetch_data_from_open_meteo(latitude, longitude):
+    with tracer.start_as_current_span("fetch_data_from_open_meteo") as span:
+        logger.info('Fetching weather data from Open-Meteo')
         # Define the parameters for your request here
         params = {
             'latitude': latitude,  # Example latitude
@@ -64,10 +99,37 @@ async def get_weather(latitude: float = Query(..., description="Latitude of the 
 
         logger.info('Received response from Open-Meteo %s', response)
         if response.status_code == 200:
-            # Set a key-value pair in Redis
-            redis_client.set(redisKey, str(response.json()), ex=4)
-            # Return the JSON response if the request was successful
             return response.json()
         else:
             # Handle errors
             raise HTTPException(status_code=500, detail='Failed to fetch data from Open-Meteo')
+
+
+def request_second_service_http_request():
+    with tracer.start_as_current_span("request_second_service_http_request") as span:
+        logger.info('Requesting second service')
+        response = requests.get('http://localhost:8001/test')
+        logger.info('Received response from second service %s', response)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            # Handle errors
+            raise HTTPException(status_code=500, detail='Failed to fetch data from second service')
+
+
+@app.get('/weather')
+async def get_weather(latitude: float = Query(..., description="Latitude of the location"),
+                      longitude: float = Query(..., description="Longitude of the location")):
+    maybe_raise_random_error()
+
+    request_second_service_http_request()
+
+    redisData = get_data_from_redis(latitude, longitude)
+    if redisData is not None:
+        return redisData
+
+    data = fetch_data_from_open_meteo(latitude, longitude)
+
+    store_data_in_redis(latitude, longitude, data)
+
+    return data

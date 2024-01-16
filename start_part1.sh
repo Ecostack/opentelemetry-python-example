@@ -3,7 +3,7 @@
 #export GRPC_VERBOSITY=debug
 #export GRPC_TRACE=http,call_error,connectivity_state
 
-export OTEL_SERVICE_NAME=opentelemetry-example
+export OTEL_SERVICE_NAME=open-telemetry.part1
 
 export OTEL_TRACES_EXPORTER=otlp
 export OTEL_LOGS_EXPORTER=otlp
@@ -25,4 +25,4 @@ export OTEL_EXPORTER_OTLP_HEADERS="uptrace-dsn=http://SomeRandomToken@localhost:
 export OTEL_EXPORTER_OTLP_ENDPOINT=127.0.0.1:14317
 export OTEL_EXPORTER_OTLP_INSECURE=true
 
-opentelemetry-instrument uvicorn main:app --port 8000
+opentelemetry-instrument uvicorn part1:app --port 8000
