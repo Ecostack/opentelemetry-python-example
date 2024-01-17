@@ -22,6 +22,9 @@ provider = MeterProvider(metric_readers=[metric_reader])
 # Sets the global default meter provider
 metrics.set_meter_provider(provider)
 
+# Creates a meter from the global meter provider
+meter = metrics.get_meter("my.meter.name")
+
 # Create FastAPI app
 app = FastAPI()
 
@@ -45,8 +48,7 @@ redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 logger.info("hello from startup")
 
-# Creates a meter from the global meter provider
-meter = metrics.get_meter("my.meter.name")
+
 
 exceptions_raised_counter = meter.create_counter(
     "exceptions.raised", unit="1", description="Counts the amount of exceptions raised"
